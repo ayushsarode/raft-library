@@ -8,25 +8,26 @@ const (
 	Candidate
 	Leader
 )
+
 type LogEntry struct {
-	Term uint64
-	Index uint64
+	Term    uint64
+	Index   uint64
 	Command []byte
 }
 
 type persistedState struct {
 	currentTerm uint64
-	votedFor string
-	log []LogEntry 
+	votedFor    string
+	log         []LogEntry
 }
 
 type volatileState struct {
-	role Role
+	role        Role
 	commitIndex uint64
-	lastApplied uint64	
+	lastApplied uint64
 
 	// leader only, reset on election
-	nextIndex map[string]uint64
+	nextIndex  map[string]uint64
 	matchIndex map[string]uint64
 }
 
