@@ -5,28 +5,28 @@ import "sync"
 type Raft struct {
 	mu sync.Mutex
 
-	id string
+	id    string
 	peers []string
 
 	persisted persistedState
-	volatile volatileState
+	volatile  volatileState
 }
 
 func NewRaft(id string, peers []string) *Raft {
 	return &Raft{
-		id: id,
+		id:    id,
 		peers: peers,
 		persisted: persistedState{
 			currentTerm: 0,
-			votedFor: "",
-			log: []LogEntry{},
+			votedFor:    "",
+			log:         []LogEntry{},
 		},
 		volatile: volatileState{
-			role: Follower,
+			role:        Follower,
 			commitIndex: 0,
 			lastApplied: 0,
-			nextIndex: make(map[string]uint64),
-			matchIndex: make(map[string]uint64),
+			nextIndex:   make(map[string]uint64),
+			matchIndex:  make(map[string]uint64),
 		},
 	}
 
@@ -82,4 +82,27 @@ func (r *Raft) lastLogPosition() (uint64, uint64) {
 
 	last := r.persisted.log[len(r.persisted.log)-1]
 	return last.Index, last.Term
+}
+
+func (r *Raft) AppendEntries(req AppendEntriesRequest) AppendEntriesResponse {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if req.Term < r.persisted.currentTerm {
+		return AppendEntriesResponse{
+			Term:    r.persisted.currentTerm,
+			Success: false,
+		}
+	}
+
+	if req.Term > r.persisted.currentTerm {
+		r.persisted.currentTerm = req.Term
+		r.persisted.votedFor = ""
+	}
+	r.volatile.role = Follower
+
+	return AppendEntriesResponse{
+		Term:    r.persisted.currentTerm,
+		Success: true,
+	}
 }

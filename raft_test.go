@@ -169,3 +169,76 @@ func TestRequestVoteGrantsVoteForMoreRecentCandidateLog(t *testing.T) {
 		t.Fatal("expected vote to be granted for more recent candidate log")
 	}
 }
+
+func TestAppendEntriesRejectionForStaleTerm(t *testing.T) {
+	r := NewRaft("node-a", nil)
+	r.persisted.currentTerm = 3
+
+	resp := r.AppendEntries(AppendEntriesRequest{
+		Term:         2,
+		LeaderId:     "node-b",
+	})
+
+	if resp.Success {
+		t.Fatal("expected append entries to be rejected for stale term")
+	}
+
+	if resp.Term != 3 {
+		t.Fatalf("expected response term 3, got %d", resp.Term)
+	}
+}
+
+func TestAppendEntriesAcceptsCurrentTermHeartbeat(t *testing.T) {
+	r := NewRaft("node-a", nil)
+	r.persisted.currentTerm = 3
+	r.volatile.role = Candidate
+
+	resp := r.AppendEntries(AppendEntriesRequest{
+		Term:     3,
+		LeaderId: "node-b",
+	})
+
+	if !resp.Success {
+		t.Fatal("expected append entries to be accepted")
+	}
+
+	if resp.Term != 3 {
+		t.Fatalf("expected term 3, got %d", resp.Term)
+	}
+
+	if r.volatile.role != Follower {
+		t.Fatalf("expected role Follower, got %s", r.volatile.role)
+	}
+}
+
+func TestAppendEntriesUpdatesTermAndClearsVoteOnNewerTerm(t *testing.T) {
+	r := NewRaft("node-a", nil)
+	r.persisted.currentTerm = 2
+	r.persisted.votedFor = "node-c"
+	r.volatile.role = Leader
+
+	resp := r.AppendEntries(AppendEntriesRequest{
+		Term:     3,
+		LeaderId: "node-b",
+	})
+
+	if !resp.Success {
+		t.Fatal("expected append entries to be accepted")
+	}
+
+	if resp.Term != 3 {
+		t.Fatalf("expected response term 3, got %d", resp.Term)
+	}
+
+	if r.persisted.currentTerm != 3 {
+		t.Fatalf("expected current term 3, got %d", r.persisted.currentTerm)
+	}
+
+	if r.persisted.votedFor != "" {
+		t.Fatalf("expected votedFor to be cleared, got %q", r.persisted.votedFor)
+	}
+
+	if r.volatile.role != Follower {
+		t.Fatalf("expected role Follower, got %s", r.volatile.role)
+	}
+}
