@@ -3,7 +3,7 @@ package raft
 import "testing"
 
 func TestRequestVoteGrantsVoteWhenNotVoted(t *testing.T) {
-	r := NewRaft("node-a", []string{"node-b", "node-c"})
+	r := NewRaft("node-a", []string{"node-b", "node-c"}, nil)
 
 	resp := r.RequestVote(RequestVoteRequest{
 		Term:         1,
@@ -26,7 +26,7 @@ func TestRequestVoteGrantsVoteWhenNotVoted(t *testing.T) {
 }
 
 func TestRequestVoteRejectsStaleTerm(t *testing.T) {
-	r := NewRaft("node-a", nil)
+	r := NewRaft("node-a", nil, nil)
 	r.persisted.currentTerm = 3
 
 	resp := r.RequestVote(RequestVoteRequest{
@@ -46,7 +46,7 @@ func TestRequestVoteRejectsStaleTerm(t *testing.T) {
 }
 
 func TestRequestVoteUpdatesTermAndStepsDownOnNewerTerm(t *testing.T) {
-	r := NewRaft("node-a", nil)
+	r := NewRaft("node-a", nil, nil)
 	r.persisted.currentTerm = 2
 	r.persisted.votedFor = "node-c"
 	r.volatile.role = Leader
@@ -76,7 +76,7 @@ func TestRequestVoteUpdatesTermAndStepsDownOnNewerTerm(t *testing.T) {
 }
 
 func TestRequestVoteRejectsSecondCandidateInSameTerm(t *testing.T) {
-	r := NewRaft("node-a", nil)
+	r := NewRaft("node-a", nil, nil)
 	r.persisted.currentTerm = 1
 	r.persisted.votedFor = "node-b"
 
@@ -97,7 +97,7 @@ func TestRequestVoteRejectsSecondCandidateInSameTerm(t *testing.T) {
 }
 
 func TestRequestVoteAllowsRepeatedVoteForSameCandidate(t *testing.T) {
-	r := NewRaft("node-a", nil)
+	r := NewRaft("node-a", nil, nil)
 	r.persisted.currentTerm = 1
 	r.persisted.votedFor = "node-b"
 
@@ -114,7 +114,7 @@ func TestRequestVoteAllowsRepeatedVoteForSameCandidate(t *testing.T) {
 }
 
 func TestRequestVoteRejectsStaleCandidateLogTerm(t *testing.T) {
-	r := NewRaft("node-a", nil)
+	r := NewRaft("node-a", nil, nil)
 	r.persisted.log = []LogEntry{
 		{Term: 1, Index: 1},
 		{Term: 2, Index: 2},
@@ -133,7 +133,7 @@ func TestRequestVoteRejectsStaleCandidateLogTerm(t *testing.T) {
 }
 
 func TestRequestVoteRejectsStaleCandidateLogIndex(t *testing.T) {
-	r := NewRaft("node-a", nil)
+	r := NewRaft("node-a", nil, nil)
 	r.persisted.log = []LogEntry{
 		{Term: 2, Index: 1},
 		{Term: 2, Index: 2},
@@ -152,7 +152,7 @@ func TestRequestVoteRejectsStaleCandidateLogIndex(t *testing.T) {
 }
 
 func TestRequestVoteGrantsVoteForMoreRecentCandidateLog(t *testing.T) {
-	r := NewRaft("node-a", nil)
+	r := NewRaft("node-a", nil, nil)
 	r.persisted.log = []LogEntry{
 		{Term: 1, Index: 1},
 		{Term: 2, Index: 2},
@@ -171,12 +171,12 @@ func TestRequestVoteGrantsVoteForMoreRecentCandidateLog(t *testing.T) {
 }
 
 func TestAppendEntriesRejectionForStaleTerm(t *testing.T) {
-	r := NewRaft("node-a", nil)
+	r := NewRaft("node-a", nil, nil)
 	r.persisted.currentTerm = 3
 
 	resp := r.AppendEntries(AppendEntriesRequest{
-		Term:         2,
-		LeaderId:     "node-b",
+		Term:     2,
+		LeaderId: "node-b",
 	})
 
 	if resp.Success {
@@ -189,7 +189,7 @@ func TestAppendEntriesRejectionForStaleTerm(t *testing.T) {
 }
 
 func TestAppendEntriesAcceptsCurrentTermHeartbeat(t *testing.T) {
-	r := NewRaft("node-a", nil)
+	r := NewRaft("node-a", nil, nil)
 	r.persisted.currentTerm = 3
 	r.volatile.role = Candidate
 
@@ -212,7 +212,7 @@ func TestAppendEntriesAcceptsCurrentTermHeartbeat(t *testing.T) {
 }
 
 func TestAppendEntriesUpdatesTermAndClearsVoteOnNewerTerm(t *testing.T) {
-	r := NewRaft("node-a", nil)
+	r := NewRaft("node-a", nil, nil)
 	r.persisted.currentTerm = 2
 	r.persisted.votedFor = "node-c"
 	r.volatile.role = Leader
